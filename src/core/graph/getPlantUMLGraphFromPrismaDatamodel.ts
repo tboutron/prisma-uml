@@ -6,12 +6,12 @@ export interface Cardinality {
   start: string
   end: string
 }
-interface Relation {
+export interface Relation {
   id: string
   cardinality: Cardinality
 }
 
-type GraphEntity = DMMF.Model | DMMF.DatamodelEnum
+export type GraphEntity = DMMF.Model | DMMF.DatamodelEnum
 const keyExtractor: VertexKeyExtractor<GraphEntity> = (entity) => entity.name
 const edgeKeyExtractor: EdgeKeyExtractor<GraphEdge<GraphEntity, Relation>> = (edge) => edge.value.id
 

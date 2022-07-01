@@ -21,6 +21,7 @@ enum CommandOptions {
   Output = 'output',
   Server = 'server',
   File = 'file',
+  Relations = 'relations',
 }
 const command = ['$0 <path>']
 const describe = 'Generate a plantUML from a Prisma schema'
@@ -37,6 +38,7 @@ Usage
     )
     .example(`${chalk.green('$0')} ./schema.prisma`, `Output a plantUML Entity Relation Diagram as text in the stdout`)
     .example(`${chalk.green('$0')} ./schema.prisma > my-erd.plantuml`, `Save the diagram into a .plantuml file`)
+    .example(`${chalk.green('$0')} ./schema.prisma --relations`, `Use full relation links`)
     .example(`${chalk.green('$0')} ./schema.prisma --output svg --file my-erd.svg`, `Output a diagram as SVG`)
     .example(`${chalk.green('$0')} ./schema.prisma -o png -f my-erd.png`, `Output a diagram as PNG`)
     .example(
@@ -62,6 +64,11 @@ Usage
         describe: 'Filename or File full path to output',
         type: 'string',
       },
+      [CommandOptions.Relations]: {
+        alias: 'r',
+        describe: 'Use full relation links',
+        type: 'boolean',
+      },
     })
     .check(checkRequiredArgs)
     .version(false)
@@ -72,9 +79,10 @@ const handler = async (args: Arguments) => {
   const output = args[CommandOptions.Output]! as OutputType
   const server = args[CommandOptions.Server]!
   const file = args[CommandOptions.File]!
+  const fullRelationLinks = args[CommandOptions.Relations]!
 
   const dmmf = await loadPrismaSchema(prismaSchemaPath)
-  const plantUML = prismaToPlantUML(dmmf)
+  const plantUML = prismaToPlantUML(dmmf, fullRelationLinks)
   switch (output) {
     case OutputType.Text: {
       process.stdout.write(plantUML)

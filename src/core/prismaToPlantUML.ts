@@ -1,5 +1,5 @@
 import { DMMF } from '@prisma/generator-helper'
-import { getDMMF } from '@prisma/sdk'
+import { getDMMF } from '@prisma/internals'
 import { prismaEnumToPlantUMLEnum } from './enum/prismaEnumToPlantUMLEnum'
 import { prismaModelToPlantUMLEntity } from './entity/prismaModelToPlantUMLEntity'
 import { addNewLine, StringBuilderArtifact } from './common'
@@ -8,14 +8,17 @@ import {
   isEnum,
   isModel,
   Cardinality,
+  GraphEntity,
+  Relation,
 } from './graph/getPlantUMLGraphFromPrismaDatamodel'
+import { GraphEdge } from 'typescript-generic-datastructures'
 
 export interface PlantUMLRelation {
   start: DMMF.Model | DMMF.DatamodelEnum
   cardinality: Cardinality
   end: DMMF.Model | DMMF.DatamodelEnum
 }
-export function prismaToPlantUML(dmmf: DMMF.Document) {
+export function prismaToPlantUML(dmmf: DMMF.Document, fullRelationLinks: boolean) {
   const graph = getPlantUMLGraphFromPrismaDatamodel(dmmf.datamodel)
   const enums = graph
     .getAllVertices()
@@ -26,16 +29,14 @@ export function prismaToPlantUML(dmmf: DMMF.Document) {
     .filter((vertex) => isModel(vertex.value))
     .map((vertexModel) => (isModel(vertexModel.value) ? prismaModelToPlantUMLEntity(vertexModel.value) : undefined))
 
-  const relations = graph.getAllVertices().reduce<PlantUMLRelation[]>((acc, vertex) => {
-    vertex.getEdges().forEach((edge) => {
-      acc.push({
-        start: edge.startVertex.value,
-        cardinality: edge.value.cardinality,
-        end: edge.endVertex.value,
-      })
-    })
-    return acc
-  }, [])
+  const relations = fullRelationLinks
+    ? graph.getAllEdges().map(edgeToRelation)
+    : graph.getAllVertices().reduce<PlantUMLRelation[]>((acc, vertex) => {
+        vertex.getEdges().forEach((edge) => {
+          acc.push(edgeToRelation(edge))
+        })
+        return acc
+      }, [])
 
   const builder = []
   builder.push(addNewLine('@startuml', 2))
@@ -46,6 +47,14 @@ export function prismaToPlantUML(dmmf: DMMF.Document) {
   builder.push(addNewLine('', 2), addNewLine('@enduml', 1))
 
   return builder.join('')
+}
+
+function edgeToRelation(edge: GraphEdge<GraphEntity, Relation>): PlantUMLRelation {
+  return {
+    start: edge.startVertex.value,
+    cardinality: edge.value.cardinality,
+    end: edge.endVertex.value,
+  }
 }
 
 export function plantUMLRelationToString(relation: PlantUMLRelation) {
